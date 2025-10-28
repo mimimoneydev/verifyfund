@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="64" y1="48" x2="208" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#E9EAF7" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="8" y="8" width="240" height="240" rx="40" fill="url(#g1)"/>
+
+  <!-- Verifyfund V mark (dual-tone) -->
+  <path d="M64 116 L100 188 C102 192 108 192 110 188 L150 108 L184 156 C186 159 191 159 193 155 L210 124 C212 121 211 116 208 114 L156 76 C153 74 149 75 147 78 L112 144 L86 96 C84 92 78 92 76 96 L60 120 C58 123 59 128 64 130 Z" fill="url(#g2)"/>
+
+  <!-- Subtle inner ring -->
+  <circle cx="128" cy="128" r="92" stroke="rgba(255,255,255,0.25)" stroke-width="2" fill="none"/>
+</svg>
+
