@@ -13,7 +13,8 @@ Verifyfund is the first decentralized donation platform that uses blockchain tec
 
 🌐 **Live Demo**: [https://verifyfund.mimi.money](https://verifyfund.mimi.money)
 
-![Verifyfund Landing Page](./docs/images/landing-page.png)
+![Verifyfund Landing Page](/docs/images/landing-page.png)
+
 
 *Screenshot of Verifyfund's landing page showcasing transparent crowdfunding powered by blockchain technology*
 
