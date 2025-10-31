@@ -148,6 +148,152 @@ src/
     └── utils.ts          # Utility functions
 ```
 
+
+## 🏗️ System Architecture
+
+```
+                         +----------------------+
+                         |  Donor / Organizer  |
+                         +----------+-----------+
+                                    |
+                                    v
++--------------------------------------------------------------+
+| Next.js Frontend (verifund-client-main)                      |
+| - UI: React 19, Tailwind, Radix, Framer                      |
+| - Web3: wagmi + viem + ethers (web3Service)                  |
+| - State: TanStack Query                                      |
+| - API routes:                                                |
+|    /api/ipfs/*   -> Pinata (image + metadata to IPFS)        |
+|    /api/guardian -> Google Gemini (risk analysis)            |
++------------+---------------------+---------------+-----------+
+             |                     |               |
+     RPC (EVM)|             Mirror Node            | IPFS/Gemini
+             v                     v               v
+      +------+-----------------+   +---------------+--------+
+      |  Hedera EVM RPC       |   | Hedera Mirror Node API |
+      |  (Hashio)             |   +------------------------+
+      +-----------------------+
+             |
+             v
+   +------------------------------ Smart Contracts -----------------------------+
+   |  - USDC (ERC-20)                                                            |
+   |  - CampaignFactory (ERC-20 track)                                           |
+   |  - Campaign (ERC-20 donate(amount))                                         |
+   |  - VerifundSBT (isVerified)                                                 |
+   |  - Campaign (HBAR-native, payable donate())  [hedera-contracts]             |
+   +-----------------------------------------------------------------------------+
+```
+
+## 🔄 Data Flow
+
+```
+                                  Data Flow (End-to-End)
+
+(1) Create Campaign
++----------------------+     /api/ipfs/* (image, metadata)     +-------------------+
+| Frontend (Next.js)   | ------------------------------------> | Pinata (IPFS)     |
+| - Form               | <------------------------------------ | CIDs (image/meta) |
++----------+-----------+                                       +---------+---------+
+           |                                                         |
+           | createCampaign(name,target,duration,ipfsHash)           |
+           v                                                         |
++----------+-----------+       Hedera EVM RPC                        |
+| web3Service (ethers) | -------------------------------------------+
++----------+-----------+
+           |
+           v
++--------------------+           emits event/address          +--------------------+
+| CampaignFactory    | -------------------------------------> | Campaign deployed  |
++--------------------+                                         +--------------------+
+
+(2) Donate
+USDC path:                                               HBAR-native path:
++----------------------+   approve() + donate(amount)    +----------------------+
+| Donor Wallet         | --------------------------------> | Donor Wallet        |
++----------+-----------+                                  +----------+-----------+
+           |                                                         |
+           v                                                         v
++----------------------+                                   +----------------------+
+| Campaign (ERC-20)    |                                   | Campaign (HBAR)     |
+| emits Donated        |                                   | payable donate()    |
++----------------------+                                   +----------------------+
+
+(3) UI refresh (state/events)
++----------------------+     read via RPC (TanStack Query)   +--------------------+
+| Frontend (React+RQ)  | <----------------------------------- | Contracts          |
++----------------------+                                       +--------------------+
+
+(4) Withdraw + Spending Transparency
++----------------------+     withdraw()                       +--------------------+
+| Organizer Wallet     | -----------------------------------> | Campaign           |
++----------------------+                                       | emits Withdrawn   |
+                                                              +---------+----------+
+                                                                        |
+                                                                        v
+                                                        +-------------------------------+
+                                                        | Hedera Mirror Node API        |
+                                                        | - outgoing tinybars > ts      |
+                                                        +-------------------------------+
+                                                                        |
+                                                                        v
+                                                        +-------------------------------+
+                                                        | Frontend Spending Tracker     |
+                                                        | - converts tinybars -> HBAR   |
+                                                        +-------------------------------+
+
+(5) Verification (SBT)
++----------------------+     isVerified(owner) via RPC       +--------------------+
+| Frontend UI          | -----------------------------------> | VerifundSBT        |
++----------------------+                                       +--------------------+
+
+(6) Guardian Analysis
++----------------------+     POST /api/guardian               +--------------------+
+| Frontend UI          | -----------------------------------> | Google Gemini API  |
++----------------------+ <----------------------------------- | JSON analysis      |
+```
+
+### Mini Diagrams (Per-flow)
+
+#### (1) Create Campaign
+```
+UI -> /api/ipfs/upload-image -> Pinata -> image CID
+UI -> /api/ipfs/upload-metadata -> Pinata -> metadata CID
+UI -> RPC -> CampaignFactory.createCampaign(...) -> Campaign
+```
+
+#### (2a) Donate — USDC (approve + donate)
+```
+Donor Wallet -> USDC.approve(Campaign, amount) -> EVM
+Donor Wallet -> Campaign.donate(amount) -> EVM (emits Donated)
+```
+
+#### (2b) Donate — HBAR-native (payable)
+```
+Donor Wallet -> Campaign.donate() [value=HBAR] -> EVM (emits Donated)
+```
+
+#### (3) UI Refresh (State/Events)
+```
+Frontend (React + TanStack Query) <- RPC reads (events/state) <- Contracts
+```
+
+#### (4) Withdraw + Spending Transparency
+```
+Organizer -> Campaign.withdraw() -> EVM (emits Withdrawn)
+Frontend -> Hedera Mirror Node -> outgoing tinybars after ts -> convert to HBAR -> UI
+```
+
+#### (5) Verification (SBT)
+```
+Frontend -> VerifundSBT.isVerified(owner) -> bool
+```
+
+#### (6) Guardian Analysis
+```
+Frontend -> /api/guardian -> Google Gemini -> JSON analysis -> Frontend UI
+```
+
+
 ## 🔧 Available Scripts
 
 - `npm run dev` - Run the development server
